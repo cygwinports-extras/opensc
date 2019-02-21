@@ -1,0 +1,77 @@
+--- origsrc/opensc-0.19.0/configure.ac	2018-09-13 06:52:42.000000000 -0500
++++ src/opensc-0.19.0/configure.ac	2019-02-20 17:50:45.517757800 -0600
+@@ -112,7 +112,7 @@ case "${host}" in
+ esac
+ 
+ case "${host}" in
+-	*-mingw*|*-winnt*|*-cygwin*)
++	*-mingw*|*-winnt*)
+ 		DEBUG_FILE="%TEMP%\\\opensc-debug.log"
+ 		PROFILE_DIR_DEFAULT="obtained from windows registers"
+ 		PROFILE_DIR="\"\""
+@@ -706,7 +706,7 @@ if test "${cvcdir}" = false ; then
+ fi
+ if test "${cvcdir}" = "" ; then
+ 	case "${host}" in
+-		*-mingw*|*-winnt*|*-cygwin*)
++		*-mingw*|*-winnt*)
+ 			cvcdir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\cvc"
+ 			;;
+ 		*)
+@@ -733,7 +733,7 @@ fi
+ if test -z "${x509dir}"
+ then
+ 	case "${host}" in
+-		*-mingw*|*-winnt*|*-cygwin*)
++		*-mingw*|*-winnt*)
+ 			x509dir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\x509"
+ 			;;
+ 		*)
+@@ -876,7 +876,7 @@ if test "${enable_sm}" = "yes"; then
+ 
+ 	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
+ 	case "${host}" in
+-		*-mingw*|*-winnt*|*-cygwin*)
++		*-mingw*|*-winnt*)
+ 			DEFAULT_SM_MODULE_PATH="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\tools"
+ 		;;
+ 		*)
+--- origsrc/opensc-0.19.0/src/libopensc/reader-pcsc.c	2018-09-13 06:52:42.000000000 -0500
++++ src/opensc-0.19.0/src/libopensc/reader-pcsc.c	2019-02-20 17:59:51.780453200 -0600
+@@ -715,7 +715,7 @@ static int pcsc_cancel(sc_context_t *ctx
+ 	if (ctx->flags & SC_CTX_FLAG_TERMINATE)
+ 		return SC_ERROR_NOT_ALLOWED;
+ 
+-#ifndef _WIN32
++#if !defined(_WIN32) && !defined(CRYPTOKI_FORCE_WIN32)
+ 	if (gpriv->pcsc_wait_ctx != -1) {
+ 		rv = gpriv->SCardCancel(gpriv->pcsc_wait_ctx);
+ 		if (rv == SCARD_S_SUCCESS) {
+@@ -1413,7 +1413,7 @@ static int pcsc_detect_readers(sc_contex
+ 		rv = SCARD_E_SHARING_VIOLATION;
+ 		/* Use DIRECT mode only if there is no card in the reader */
+ 		if (!(reader->flags & SC_READER_CARD_PRESENT)) {
+-#ifndef _WIN32	/* Apple 10.5.7 and pcsc-lite previous to v1.5.5 do not support 0 as protocol identifier */
++#if !defined(_WIN32) && !defined(CRYPTOKI_FORCE_WIN32)	/* Apple 10.5.7 and pcsc-lite previous to v1.5.5 do not support 0 as protocol identifier */
+ 			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle, &active_proto);
+ #else
+ 			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, 0, &card_handle, &active_proto);
+@@ -1496,7 +1496,7 @@ static int pcsc_wait_for_event(sc_contex
+ 		for (num_watch = 0; rgReaderStates[num_watch].szReader; num_watch++)
+ 			sc_log(ctx, "re-use reader '%s'", rgReaderStates[num_watch].szReader);
+ 	}
+-#ifndef _WIN32
++#if !defined(_WIN32) && !defined(CRYPTOKI_FORCE_WIN32)
+ 	/* Establish a new context, assuming that it is called from a different thread with pcsc-lite */
+ 	if (gpriv->pcsc_wait_ctx == -1) {
+ 		rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &gpriv->pcsc_wait_ctx);
+--- origsrc/opensc-0.19.0/src/smm/Makefile.am	2018-09-13 06:52:42.000000000 -0500
++++ src/opensc-0.19.0/src/smm/Makefile.am	2019-02-20 18:42:17.568539100 -0600
+@@ -19,6 +19,6 @@ libsmm_local_la_SOURCES = smm-local.c sm
+ 	sm-card-authentic.c sm-card-iasecc.c \
+ 	smm-local.exports
+ libsmm_local_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) ../libopensc/libopensc.la
+-libsmm_local_la_LDFLAGS = -module -shared -no-undefined -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
++libsmm_local_la_LDFLAGS = -module -shared -no-undefined -avoid-version
+ 
+ # noinst_HEADERS = sm.h

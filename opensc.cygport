@@ -1,0 +1,32 @@
+NAME="opensc"
+VERSION=0.19.0
+RELEASE=1
+CATEGORY=
+SUMMARY=
+DESCRIPTION=
+HOMEPAGE=
+SRC_URI="https://github.com/OpenSC/OpenSC/releases/download/${VERSION}/opensc-${VERSION}.tar.gz"
+#	https://src.fedoraproject.org/cgit/rpms/opensc.git/plain/opensc-0.19.0-rsa-pss.patch
+PATCH_URI="
+	https://src.fedoraproject.org/cgit/rpms/opensc.git/plain/opensc-0.19.0-pinpad.patch
+"
+
+CYGCONF_ARGS="
+	--enable-pcsc
+	--with-pcsc-provider=winscard.dll
+	--disable-assert
+	--disable-tests
+"
+
+src_install() {
+	cd ${B}
+	cyginstall
+
+	sed -i -e '/^shouldnotlink/s/=no/=yes/' ${D}/usr/lib/libopensc.la
+	rm -f ${D}/usr/lib/pkgconfig/*.pc
+
+	dodir /usr/share/p11-kit/modules
+	echo "module: opensc-pkcs11.dll" > ${D}/usr/share/p11-kit/modules/opensc.module
+
+	make_etc_defaults /etc/opensc.conf
+}
